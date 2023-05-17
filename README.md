@@ -12,7 +12,7 @@ This code is designed to extract specific metadata from DICOM files and store th
 1. Clone the repository:
 
    ```
-   [git clone (https://github.com/guilhermeadams/lambdadicomextractor)]
+   git clone (https://github.com/guilhermeadams/lambdadicomextractor
    ```
 
 2. Install the required dependencies:
