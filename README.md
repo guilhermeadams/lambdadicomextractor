@@ -1,30 +1,91 @@
-We are absolutely thrilled to present this amazing Python AWS Lambda function that extracts important headers from DICOM files stored in an S3 bucket, and places that juicy data into a DynamoDB table. This could be a true game changer for managing and analysing medical imaging data. So let's jump right in! 🎉
+# DICOM Metadata Extraction
 
-What Does This Code Do? 🧐
-Every time a DICOM file lands in a specified S3 bucket, this Python script awakens like a dragon from slumber. 🐉 It retrieves the DICOM file, parses it with the help of the pydicom library, and extracts key pieces of information - the headers. It then gracefully deposits this treasure into a DynamoDB table named 'DicomMetadata'.
+This code is designed to extract specific metadata from DICOM files and store them in DynamoDB using AWS Lambda and Boto3. DICOM (Digital Imaging and Communications in Medicine) is a standard format used for medical imaging.
 
-Specifically, it'll go for these headers:
+## Prerequisites
+- Python 3.6 or above
+- AWS SDK for Python (Boto3) library
+- PyDICOM library
 
-PatientID
-PatientName
-ReferringPhysicianName
-StudyDate
-StudyDescription
-And if a header isn't found, it'll just place a None there, like a placeholder. 🃏 Finally, it'll let you know it's done by returning a joyful HTTP 200 status code and a message telling you which file it just processed.
+## Installation
 
-Dependencies 🌲
-This script uses the following Python libraries:
+1. Clone the repository:
 
-boto3: The Amazon Web Services (AWS) SDK for Python, which allows Python developers to write software that makes use of services like Amazon S3, Amazon EC2, and others.
-pydicom: A pure Python package for working with DICOM files. It was made for inspecting and modifying DICOM data in an easy "pythonic" way.
-How to Use This Code 🚀
-First, you need to have an AWS account and the appropriate permissions to read from an S3 bucket and write to a DynamoDB table. You'll also need to configure your AWS credentials either by using the AWS CLI or by manually editing your AWS credentials file.
+   ```
+   git clone <repository_url>
+   ```
 
-This script is designed to run as an AWS Lambda function. This means you need to deploy it to AWS Lambda, and then set up an event source that triggers the Lambda function whenever a new DICOM file is added to the S3 bucket.
+2. Install the required dependencies:
 
-Once you've set everything up, just upload a DICOM file to your S3 bucket and let the magic happen! 💫
+   ```
+   pip install boto3 pydicom
+   ```
 
-Conclusion 🎈
-And there you have it! We've just explored an incredible Python script designed to work tirelessly, extracting and storing valuable data from your DICOM files. We're overjoyed at the possibilities this opens up, and we're sure you'll love using it as much as we loved writing it! 🥳
+## Configuration
 
-Remember, great code is like a well-oiled machine. This one is no exception. It'll faithfully do its job, carrying out its duties with the calm assurance of a dedicated servant. Enjoy! 🎉
+Before running the code, make sure you have the necessary AWS credentials configured on your system. This can be done by either setting environment variables or using the AWS CLI.
+
+## Usage
+
+1. Import the required libraries:
+
+   ```python
+   import boto3
+   import pydicom
+   from io import BytesIO
+   ```
+
+2. Instantiate the Boto3 clients for S3 and DynamoDB:
+
+   ```python
+   s3 = boto3.client('s3')
+   dynamodb = boto3.resource('dynamodb')
+   ```
+
+3. Define the Lambda handler function:
+
+   ```python
+   def lambda_handler(event, context):
+       # Get bucket name and file key from the S3 event
+       bucket_name = event['Records'][0]['s3']['bucket']['name']
+       file_key = event['Records'][0]['s3']['object']['key']
+   
+       # Get the DICOM file from S3
+       dicom_object = s3.get_object(Bucket=bucket_name, Key=file_key)
+       dicom_data = dicom_object['Body'].read()
+   
+       # Load DICOM file with pydicom
+       dicom_file = pydicom.dcmread(BytesIO(dicom_data))
+   
+       # Extract the specific DICOM headers
+       headers = ['PatientID', 'PatientName', 'ReferringPhysicianName', 'StudyDate', 'StudyDescription']
+       extracted_headers = {header: str(dicom_file.data_element(header).value) if dicom_file.data_element(header) else None for header in headers}
+   
+       # Write the extracted headers to DynamoDB
+       table = dynamodb.Table('DicomMetadata')
+       table.put_item(Item={'s3_key': file_key, **extracted_headers})
+   
+       return {
+           'statusCode': 200,
+           'body': f'Successfully processed file {file_key}'
+       }
+   ```
+
+4. Customize the `headers` list to specify the DICOM headers you want to extract.
+
+5. Update the `DynamoDB` table name in the `table` variable to match your desired table.
+
+6. Deploy the code to AWS Lambda.
+
+## Limitations
+
+- This code assumes that the DICOM files are stored in an S3 bucket and are triggering the Lambda function through an S3 event.
+- The code extracts specific DICOM headers based on the `headers` list provided. Modify the list according to your requirements.
+
+## Contributing
+
+Contributions are welcome! If you find any issues or have suggestions, please open an issue or submit a pull request.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
